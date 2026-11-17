@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALEX Broker — Simulador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<h2 class="sr-only">ALEX Broker — Simulador con circuit breaker al -10%</h2>
+
+<!-- LOCKDOWN OVERLAY -->
+<div id="lockdown-overlay">
+  <div class="lock-icon">🔒</div>
+  <div class="lock-title">TRADING SUSPENDIDO</div>
+  <div class="lock-sub">ALEX detectó una caída del <strong style="color:var(--red)">10%</strong> sobre el capital inicial.<br>Las operaciones se reanudarán automáticamente cuando el portafolio recupere el 10% perdido.</div>
+  <div class="lock-amounts">
+    <div class="lock-card">
+      <div class="lock-card-label">Capital inicial</div>
+      <div class="lock-card-val" id="lo-initial">—</div>
+    </div>
+    <div class="lock-card">
+      <div class="lock-card-label">Capital actual</div>
+      <div class="lock-card-val dn" id="lo-current">—</div>
+    </div>
+    <div class="lock-card">
+      <div class="lock-card-label">Pérdida</div>
+      <div class="lock-card-val dn" id="lo-loss">—</div>
+    </div>
+    <div class="lock-card">
+      <div class="lock-card-label">Necesito recuperar</div>
+      <div class="lock-card-val" style="color:var(--accent)" id="lo-need">—</div>
+    </div>
+  </div>
+  <div class="lock-progress-wrap">
+    <div class="lock-progress-label">
+      <span>Recuperación</span>
+      <span id="lo-pct-label">0%</span>
+    </div>
+    <div class="lock-progress-bar"><div class="lock-progress-fill" id="lo-progress" style="width:0%"></div></div>
+  </div>
+  <div class="lock-hint">El mercado sigue corriendo. Observá las cotizaciones mientras esperás.</div>
+</div>
+
+<!-- ALERT BANNER -->
+<div id="alert-banner">
+  <div class="alert-dot"></div>
+  <span>⚠ ALERTA DE RIESGO — El portafolio está cerca del límite del –10%</span>
+  <span class="alert-pct" id="alert-pct-label"></span>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">ALEX <span class="logo-badge">BROKER</span></div>
+  <div class="header-right">
+    <div class="market-status"><div class="status-dot" id="mkt-dot"></div><span id="mkt-label">MERCADO ABIERTO</span></div>
+    <div class="cash-block">
+      <div class="cash-label">Efectivo disponible</div>
+      <div class="cash-display" id="cash-display">$100,000.00</div>
+    </div>
+  </div>
+</div>
+
+<!-- EQUITY BAR -->
+<div class="equity-bar">
+  <div class="eq-item"><div class="eq-label">Capital inicial</div><div class="eq-val" id="eq-initial" style="color:var(--text2)">$100,000.00</div></div>
+  <div class="eq-sep"></div>
+  <div class="eq-item"><div class="eq-label">Equity total</div><div class="eq-val" id="eq-total">$100,000.00</div></div>
+  <div class="eq-sep"></div>
+  <div class="eq-item"><div class="eq-label">P&L neto</div><div class="eq-val" id="eq-pnl">$0.00</div></div>
+  <div class="eq-sep"></div>
+  <div class="eq-item" style="flex:1">
+    <div class="threshold-bar-wrap">
+      <div class="threshold-bar-label">
+        <span>Nivel de riesgo</span>
+        <span id="eq-pct-label" style="color:var(--green)">0.00%</span>
+      </div>
+      <div class="threshold-bar">
+        <div class="threshold-fill" id="eq-bar-fill" style="width:0%;background:var(--green)"></div>
+        <div class="threshold-line" id="eq-threshold-line" style="left:100%"></div>
+      </div>
+    </div>
+  </div>
+  <div class="eq-item" style="text-align:right">
+    <div class="eq-label">Límite –10%</div>
+    <div class="eq-val dn" id="eq-limit">$90,000.00</div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker-wrap"><div class="ticker" id="ticker"></div></div>
+
+<div class="app">
+  <!-- LEFT -->
+  <div class="panel-left">
+    <div class="sec-hdr">Mercado</div>
+    <div class="market-group"><div class="market-label">🌎 Internacionales</div><div id="intl-list"></div></div>
+    <div class="market-group"><div class="market-label">🇦🇷 Argentina</div><div id="arg-list"></div></div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="panel-center">
+    <div class="chart-header">
+      <div>
+        <div class="chart-name-big" id="chart-name">Apple Inc.</div>
+        <div class="chart-sym-small" id="chart-sym">AAPL · NASDAQ</div>
+      </div>
+      <div>
+        <div class="chart-price-big up" id="chart-price">$182.34</div>
+        <div class="chart-chg-big up" id="chart-chg">+1.24 (+0.68%)</div>
+      </div>
+    </div>
+    <div class="chart-controls">
+      <div class="ctrl-group" id="range-btns">
+        <button class="ctrl-btn active" onclick="setRange('1D',this)">1D</button>
+        <button class="ctrl-btn" onclick="setRange('1W',this)">1S</button>
+        <button class="ctrl-btn" onclick="setRange('1M',this)">1M</button>
+        <button class="ctrl-btn" onclick="setRange('3M',this)">3M</button>
+      </div>
+      <div class="ctrl-group">
+        <button class="chart-type-btn active" onclick="setChartType('line',this)">〰</button>
+        <button class="chart-type-btn" onclick="setChartType('candlestick',this)">▮</button>
+        <button class="chart-type-btn" onclick="setChartType('bar',this)">▊</button>
+      </div>
+      <div class="ind-toggle">
+        <button class="ind-chip active" id="chip-ma" onclick="toggleIndicator('ma',this)">MA</button>
+        <button class="ind-chip active" id="chip-ema" onclick="toggleIndicator('ema',this)">EMA</button>
+        <button class="ind-chip active" id="chip-bb" onclick="toggleIndicator('bb',this)">BB</button>
+        <button class="ind-chip active" id="chip-rsi" onclick="toggleIndicator('rsi',this)">RSI</button>
+        <button class="ind-chip active" id="chip-vol" onclick="toggleIndicator('vol',this)">VOL</button>
+      </div>
+    </div>
+    <div class="chart-main-wrap"><canvas id="mainChart"></canvas></div>
+    <div class="chart-rsi-wrap" id="rsi-wrap"><div class="rsi-label">RSI(14)</div><canvas id="rsiChart"></canvas></div>
+    <div class="chart-main-wrap" id="vol-wrap" style="height:56px;padding:3px 12px;flex:none"><canvas id="volChart"></canvas></div>
+    <div class="stats-bar">
+      <div class="stat-item"><div class="stat-label">Apertura</div><div class="stat-val" id="stat-open">—</div></div>
+      <div class="stat-item"><div class="stat-label">Máximo</div><div class="stat-val up" id="stat-high">—</div></div>
+      <div class="stat-item"><div class="stat-label">Mínimo</div><div class="stat-val dn" id="stat-low">—</div></div>
+      <div class="stat-item"><div class="stat-label">Volumen</div><div class="stat-val" id="stat-vol">—</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel-right">
+    <div class="sec-hdr">Operar — <span id="trade-sym-label" style="color:var(--accent);font-family:var(--mono)">AAPL</span></div>
+    <div class="trade-section">
+      <div class="trade-tabs">
+        <button class="trade-tab buy active" onclick="setTradeMode('buy',this)">COMPRAR</button>
+        <button class="trade-tab sell" onclick="setTradeMode('sell',this)">VENDER</button>
+      </div>
+      <div class="trade-field">
+        <div class="trade-label">Cantidad (acciones)</div>
+        <input type="number" class="trade-input" id="qty-input" value="1" min="1" step="1" oninput="updateSummary()">
+      </div>
+      <div class="trade-summary">
+        <div class="trade-row"><span class="lbl">Precio actual</span><span class="val" id="ts-price">—</span></div>
+        <div class="trade-row"><span class="lbl">Cantidad</span><span class="val" id="ts-qty">1</span></div>
+        <div class="trade-row"><span class="lbl">Comisión (0.1%)</span><span class="val" id="ts-fee">—</span></div>
+        <div class="trade-row" style="border-top:1px solid rgba(255,255,255,.05);margin-top:5px;padding-top:5px"><span class="lbl">Total</span><span class="val" id="ts-total" style="color:var(--accent)">—</span></div>
+      </div>
+      <button class="btn-trade btn-buy" id="trade-btn" onclick="executeTrade()">COMPRAR AAPL</button>
+    </div>
+
+    <div class="sec-hdr sec-toggle" onclick="toggleSection('portfolio')">Portfolio <span id="port-count" style="color:var(--accent)"></span></div>
+    <div id="portfolio-section">
+      <div class="portfolio-summary">
+        <div class="psum-card"><div class="psum-label">Valor total</div><div class="psum-val" id="ps-total">$0.00</div></div>
+        <div class="psum-card"><div class="psum-label">P&L total</div><div class="psum-val" id="ps-pnl">$0.00</div></div>
+        <div class="psum-card" style="grid-column:1/-1"><div class="psum-label">P&L del día</div><div class="psum-val" id="ps-day">$0.00</div></div>
+      </div>
+      <div id="portfolio-list"><div class="empty-state">Sin posiciones abiertas</div></div>
+    </div>
+
+    <div class="sec-hdr sec-toggle" onclick="toggleSection('history')">
+      Historial <span id="hist-count" style="color:var(--text3)"></span>
+      <button class="export-btn" onclick="exportCSV(event)">⬇ CSV</button>
+    </div>
+    <div id="history-section">
+      <div id="history-list"><div class="empty-state">Sin operaciones aún</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-chart-financial/0.2.1/chartjs-chart-financial.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/indicators.js"></script>
+<script src="js/risk.js"></script>
+<script src="js/market.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/trading.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
